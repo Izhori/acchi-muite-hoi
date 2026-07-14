@@ -1,0 +1,13 @@
+{
+  "name": "あっち向いてホイ ✕ AI",
+  "short_name": "あっち向いてホイ",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1b1030",
+  "theme_color": "#1b1030",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

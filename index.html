@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="theme-color" content="#1b1030" />
+<link rel="apple-touch-icon" href="icon-180.png" />
+<link rel="icon" type="image/png" href="favicon.png" />
+<link rel="manifest" href="manifest.json" />
 <title>あっち向いてホイ ✕ AI</title>
 <style>
   :root{
@@ -214,7 +218,7 @@
     .cam{right:max(12px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom))}
   }
   @media (max-width:600px){
-    .cam{width:40vw;max-width:180px}
+    .cam{width:40vw;max-width:180px;bottom:calc(78px + env(safe-area-inset-bottom))}
     button.mini{padding:11px 13px;font-size:14px}
     #startBtn{font-size:19px;padding:16px 30px}
     .camBtn{font-size:13px;padding:11px 16px}
@@ -1358,12 +1362,4 @@ resetBtn.addEventListener("click", ()=>{
   scoreMe=0;scoreAi=0;scoreMeEl.textContent=0;scoreAiEl.textContent=0;
   setResult("スコアをリセットしました",""); setPhase("スタート待ち");
 });
-$("settingsBtn").addEventListener("click", ()=>{
-  const p=$("settingsPanel");
-  p.style.display = (p.style.display==="none") ? "flex" : "none";
-});
-
-// (idle glance removed — AI is now image/video based; keep the idle still)
-</script>
-</body>
-</html>
+$("sett
