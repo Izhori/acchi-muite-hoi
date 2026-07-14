@@ -160,6 +160,10 @@
   .scoreMini{position:absolute;top:8px;left:12px;z-index:5;display:flex;gap:12px;
      font-size:13px;font-weight:700;opacity:.85}
   .scoreMini .me b{color:var(--ok);font-size:16px} .scoreMini .ai b{color:var(--accent);font-size:16px}
+  .volCtl{position:absolute;top:8px;right:12px;z-index:9;display:flex;align-items:center;gap:6px}
+  .vbtn{font-size:15px;font-weight:700;padding:7px 10px;background:rgba(255,255,255,.16);border:none;border-radius:10px;color:#fff;cursor:pointer;line-height:1}
+  .vbtn:active{background:rgba(255,255,255,.32)}
+  .volPct{font-size:12px;opacity:.85;min-width:38px;text-align:center}
   /* camera PiP bottom-right */
   .cam{position:absolute;right:14px;bottom:14px;width:min(32vw,240px);aspect-ratio:4/3;
      border-radius:14px;overflow:hidden;background:#000;z-index:6;
@@ -213,6 +217,7 @@
   html,body{-webkit-text-size-adjust:100%;overscroll-behavior:none}
   @supports(padding:max(0px)){
     .scoreMini{top:max(8px,env(safe-area-inset-top));left:max(12px,env(safe-area-inset-left))}
+    .volCtl{top:max(8px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right))}
     .telop{top:max(10px,env(safe-area-inset-top))}
     .miniControls{left:max(12px,env(safe-area-inset-left));bottom:max(12px,env(safe-area-inset-bottom))}
     .cam{right:max(12px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom))}
@@ -253,6 +258,13 @@
     <div class="scoreMini">
       <span class="me">YOU <b id="scoreMe">0</b></span>
       <span class="ai">AI <b id="scoreAi">0</b></span>
+    </div>
+
+    <!-- 音量調整（サイドボタンが効かないiPhone用） -->
+    <div class="volCtl" id="volCtl">
+      <button id="volDown" class="vbtn" aria-label="音量ダウン">🔉−</button>
+      <span id="volPct" class="volPct">90%</span>
+      <button id="volUp" class="vbtn" aria-label="音量アップ">🔊＋</button>
     </div>
 
     <!-- camera: small, bottom-right -->
@@ -691,14 +703,20 @@ function aiShowImg(src){
   }
 }
 let _sfx=null;
-function playSound(src){ try{ if(_sfx){ _sfx.pause(); } _sfx=new Audio(src); _sfx.play().catch(()=>{}); return _sfx; }catch(e){ return null; } }
+function playSound(src){
+  try{
+    resumeAudio();
+    if(sfxAudio){ sfxAudio.src=src; try{sfxAudio.currentTime=0;}catch(e){} sfxAudio.play().catch(()=>{}); return sfxAudio; }
+    const a=new Audio(src); a.volume=gameVolume; a.play().catch(()=>{}); return a;
+  }catch(e){ return null; }
+}
 function fadeShow(el,disp){ if(!el) return; el.style.display=disp||"flex"; el.style.opacity="0"; requestAnimationFrame(()=>{ el.style.opacity="1"; }); }
 function fadeHide(el){ if(!el) return; el.style.opacity="0"; setTimeout(()=>{ if(el.style.opacity==="0") el.style.display="none"; }, 360); }
 function aiPlayVideo(src,{keepLast=false,sound=false}={}){
   return new Promise(res=>{
     if(!aiVid){ res(); return; }
     // sound=true の動画は動画内音声をそのまま使う（AI発話は付けない）
-    if(sound && "speechSynthesis" in window) speechSynthesis.cancel();
+    if(sound){ resumeAudio(); if("speechSynthesis" in window) speechSynthesis.cancel(); }
     aiVid.src=src; aiVid.muted=!sound;               // 通常はミュート／sound時のみ音声再生
     aiVid.style.opacity="1"; aiImg.style.opacity="0";   // 動画へフェード
     try{ aiVid.currentTime=0; }catch(e){}
@@ -950,7 +968,7 @@ function speak(text,{rate=1.2,pitch=1.4}={}){
     try{
       speechSynthesis.cancel();
       const u=new SpeechSynthesisUtterance(text);
-      u.lang="ja-JP"; if(jaVoice) u.voice=jaVoice; u.rate=rate; u.pitch=pitch;
+      u.lang="ja-JP"; if(jaVoice) u.voice=jaVoice; u.rate=rate; u.pitch=pitch; u.volume=gameVolume;
       let done=false; const fin=()=>{ if(!done){done=true;res();} };
       u.onend=fin; u.onerror=fin;
       speechSynthesis.speak(u);
@@ -959,12 +977,40 @@ function speak(text,{rate=1.2,pitch=1.4}={}){
   });
 }
 
+/* ---------- 出力音量（アプリ内で調整） ---------- */
+// iOSはmedia要素の volume が効かないため、Web Audioのゲインで全体音量を制御する
+let audioCtx=null, masterGain=null, sfxAudio=null, gameVolume=0.9;
+const _routed=new WeakSet();
+function ensureAudioGraph(){
+  if(audioCtx) return audioCtx;
+  try{
+    audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    masterGain=audioCtx.createGain(); masterGain.gain.value=gameVolume;
+    masterGain.connect(audioCtx.destination);
+    routeMedia(aiVid); routeMedia(rewardVideo);
+    sfxAudio=new Audio(); sfxAudio.preload="auto"; routeMedia(sfxAudio);
+  }catch(e){ audioCtx=null; }
+  return audioCtx;
+}
+function routeMedia(el){
+  if(!audioCtx||!masterGain||!el||_routed.has(el)) return;
+  try{ audioCtx.createMediaElementSource(el).connect(masterGain); _routed.add(el); }catch(e){}
+}
+function resumeAudio(){ try{ if(audioCtx&&audioCtx.state==="suspended") audioCtx.resume(); }catch(e){} }
+function setGameVolume(v){
+  gameVolume=Math.max(0,Math.min(1,Math.round(v*100)/100));
+  if(masterGain) masterGain.gain.value=gameVolume;
+  const el=document.getElementById("volPct"); if(el) el.textContent=Math.round(gameVolume*100)+"%";
+}
+
 /* ---------- microphone: detect the user's spoken "ホイ" ---------- */
 let analyser=null, micBuf=null;
 function setupAudio(stream){
   try{
     if(!stream.getAudioTracks || stream.getAudioTracks().length===0) return;
-    const ac=new (window.AudioContext||window.webkitAudioContext)();
+    ensureAudioGraph();
+    const ac=audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+    audioCtx=ac;
     const src=ac.createMediaStreamSource(stream);
     analyser=ac.createAnalyser(); analyser.fftSize=512;
     src.connect(analyser); micBuf=new Uint8Array(analyser.fftSize);
@@ -1291,7 +1337,7 @@ startBtn.addEventListener("click", async ()=>{
   fadeHide($("startOverlay"));      // 起動ボタンは押したら消す（フェード）
   try{
     // unlock audio with this user gesture + load JP voice
-    pickVoice(); speak(" ");
+    pickVoice(); ensureAudioGraph(); resumeAudio(); setGameVolume(gameVolume); speak(" ");
     camHint.textContent="カメラを許可…";
     await startCamera();
     camState.textContent="カメラ ON"; camHint.textContent="モデル読み込み中…";
@@ -1317,49 +1363,4 @@ stopBtn.addEventListener("click", ()=>{
   if("speechSynthesis" in window) speechSynthesis.cancel();
   busy=false; gamePhase="IDLE";
   hideCue(); hideAiHand(); hideAiHandSide(); hideBigArrow();
-  setAiFace("center"); setAiExpr("idle"); aiState.textContent="待機中";
-  playBtn.disabled=false; stopBtn.disabled=true;
-  setPhase("中止しました");
-  setResult("ゲームを中止しました。「じゃんけん！」で再開できます","");
-});
-/* ---------- 正面キャリブレーション：「オッケー」の発話で確定 ----------
-   ※ SpeechRecognition は別途マイク許可を要求する（許可ダイアログが再び出る）ため使わない。
-      開始時に取得済みのマイク音声レベルで「発話（オッケー）」を検出して確定する。 */
-let calibrated=false;
-async function beginCalibration(){
-  calibrated=false;
-  setPhase("キャリブレーション");
-  await aiPlayVideo(AI_INTRO,{sound:true});   // キャリブレーションの案内動画（動画内音声を使用）
-  if(!running) return;
-  setPhase("正面を向いて「オッケー」と言ってね");
-  camHint.textContent="正面を向いて「オッケー」";
-  showCue("正面を向いて「オッケー」と言ってね");
-  aiSay("正面を向いて、オッケーって言ってね",true);   // 吹き出し表示のみ（AI合成音声なし）
-  // マイクの音声レベルで発話を検知（追加の許可ダイアログは出さない）
-  while(running && !calibrated){
-    const sig=await waitForHoi(6000);   // 声を出したタイミングを検出
-    if(sig==="hoi") tryConfirmCalib();
-    else if(sig==="noaudio" && live.faceM) tryConfirmCalib();   // マイク不可なら顔が取れ次第確定
-    if(calibrated) break;
-    await wait(150);
-  }
-}
-function tryConfirmCalib(){
-  if(calibrated) return;
-  if(live.faceM){
-    calibrated=true;
-    hideCue(); camHint.textContent="";
-    neutral={...live.faceM};
-    setResult("正面をセット✅","win");
-    aiSay("覚えたよ！",true);
-    if(!busy) playRound();                        // じゃんけんを自動スタート
-  } else {
-    // 顔が取れていない → 聞き続けてもう一度「オッケー」で確定
-    setResult("顔が見えないよ。明るい所で正面を向いて、もう一度「オッケー」と言ってね","lose");
-  }
-}
-resetBtn.addEventListener("click", ()=>{
-  scoreMe=0;scoreAi=0;scoreMeEl.textContent=0;scoreAiEl.textContent=0;
-  setResult("スコアをリセットしました",""); setPhase("スタート待ち");
-});
-$("sett
+  setAiFace("center"); setAiExpr("idle"); aiState.textConte
