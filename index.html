@@ -595,75 +595,7 @@ function hideCue(){ cue.classList.remove("show","pulse"); }
 /* ---------- AI face ---------- */
 // The AI face is now the <moe-chara> Web Component (embedded further below).
 // The old inline SVG is kept only as a reference string and is NOT injected.
-const _legacyFaceSVG = `
-<svg viewBox="0 0 230 270" width="230" height="270" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="hairG" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#7d5442"/><stop offset="1" stop-color="#4a2f24"/>
-    </linearGradient>
-    <radialGradient id="skinG" cx="50%" cy="42%" r="65%">
-      <stop offset="0" stop-color="#ffe9dd"/><stop offset="1" stop-color="#f3c9b4"/>
-    </radialGradient>
-    <radialGradient id="blushG" cx="50%" cy="50%" r="50%">
-      <stop offset="0" stop-color="#ff9db0" stop-opacity=".8"/>
-      <stop offset="1" stop-color="#ff9db0" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="eyeG" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#8a5a3c"/><stop offset="1" stop-color="#3a2418"/>
-    </linearGradient>
-  </defs>
-
-  <!-- back hair -->
-  <path d="M40 120 C30 60 70 18 115 18 C160 18 200 60 190 120
-           C196 175 188 232 176 258 L150 258 C168 210 168 150 150 120
-           C160 150 152 205 138 258 L92 258 C78 205 70 150 80 120
-           C62 150 62 210 80 258 L54 258 C42 232 34 175 40 120 Z" fill="url(#hairG)"/>
-
-  <!-- face -->
-  <ellipse cx="115" cy="132" rx="66" ry="76" fill="url(#skinG)"/>
-  <!-- ears -->
-  <ellipse cx="51" cy="140" rx="9" ry="14" fill="url(#skinG)"/>
-  <ellipse cx="179" cy="140" rx="9" ry="14" fill="url(#skinG)"/>
-
-  <!-- blush -->
-  <ellipse cx="78" cy="158" rx="17" ry="11" fill="url(#blushG)"/>
-  <ellipse cx="152" cy="158" rx="17" ry="11" fill="url(#blushG)"/>
-
-  <!-- eyebrows -->
-  <path d="M62 108 Q84 98 104 106" stroke="#6b4636" stroke-width="4" fill="none" stroke-linecap="round"/>
-  <path d="M126 106 Q146 98 168 108" stroke="#6b4636" stroke-width="4" fill="none" stroke-linecap="round"/>
-
-  <!-- eyes -->
-  <g id="eyeL">
-    <path d="M64 130 Q83 116 102 130 Q83 142 64 130 Z" fill="#fff"/>
-    <circle class="pupil" cx="84" cy="130" r="9.5" fill="url(#eyeG)"/>
-    <circle class="pupil" cx="84" cy="130" r="4.2" fill="#1c1008"/>
-    <circle class="hl" cx="80.5" cy="126.5" r="2.6" fill="#fff"/>
-    <path d="M63 128 Q83 113 103 128" stroke="#2a1a12" stroke-width="3.4" fill="none" stroke-linecap="round"/>
-    <path d="M63 128 q-6 -2 -9 -6" stroke="#2a1a12" stroke-width="3" fill="none" stroke-linecap="round"/>
-  </g>
-  <g id="eyeR">
-    <path d="M128 130 Q147 116 166 130 Q147 142 128 130 Z" fill="#fff"/>
-    <circle class="pupil" cx="147" cy="130" r="9.5" fill="url(#eyeG)"/>
-    <circle class="pupil" cx="147" cy="130" r="4.2" fill="#1c1008"/>
-    <circle class="hl" cx="143.5" cy="126.5" r="2.6" fill="#fff"/>
-    <path d="M127 128 Q147 113 167 128" stroke="#2a1a12" stroke-width="3.4" fill="none" stroke-linecap="round"/>
-    <path d="M167 128 q6 -2 9 -6" stroke="#2a1a12" stroke-width="3" fill="none" stroke-linecap="round"/>
-  </g>
-
-  <!-- nose -->
-  <path d="M113 138 Q109 152 116 156" stroke="#e0a98f" stroke-width="2.6" fill="none" stroke-linecap="round"/>
-
-  <!-- mouth -->
-  <path id="mouth" d="M98 176 Q115 190 133 176 Q115 182 98 176 Z" fill="#e8607a"/>
-
-  <!-- front hair / bangs -->
-  <path d="M46 118 C40 58 78 22 115 22 C152 22 190 58 184 118
-           C176 96 162 84 150 92 C150 70 132 58 115 58 C98 58 80 70 80 92
-           C68 84 54 96 46 118 Z" fill="url(#hairG)"/>
-  <path d="M115 22 C150 24 180 60 176 104 C168 78 150 66 138 74
-           C140 52 128 40 115 40 Z" fill="#8a5c46" opacity=".55"/>
-</svg>`;
+const _legacyFaceSVG="";
 /* ---------- AI character = 画像/動画 素材 ---------- */
 const AI_IMG={ idle:"janken_idle.png", win:"win.png", lose:"lose.png", pointIdle:"point_idle.png",
   up:"face_up.png", down:"face_down.png", left:"face_left.png", right:"face_right.png", center:"janken_idle.png" };
@@ -1363,4 +1295,54 @@ stopBtn.addEventListener("click", ()=>{
   if("speechSynthesis" in window) speechSynthesis.cancel();
   busy=false; gamePhase="IDLE";
   hideCue(); hideAiHand(); hideAiHandSide(); hideBigArrow();
-  setAiFace("center"); setAiExpr("idle"); aiState.textConte
+  setAiFace("center"); setAiExpr("idle"); aiState.textContent="待機中";
+  playBtn.disabled=false; stopBtn.disabled=true;
+  setPhase("中止しました");
+  setResult("ゲームを中止しました。「じゃんけん！」で再開できます","");
+});
+/* ---------- 正面キャリブレーション：「オッケー」の発話で確定 ---------- */
+let calibrated=false;
+async function beginCalibration(){
+  calibrated=false;
+  setPhase("キャリブレーション");
+  await aiPlayVideo(AI_INTRO,{sound:true});
+  if(!running) return;
+  setPhase("正面を向いて「オッケー」と言ってね");
+  camHint.textContent="正面を向いて「オッケー」";
+  showCue("正面を向いて「オッケー」と言ってね");
+  aiSay("正面を向いて、オッケーって言ってね",true);
+  while(running && !calibrated){
+    const sig=await waitForHoi(6000);
+    if(sig==="hoi") tryConfirmCalib();
+    else if(sig==="noaudio" && live.faceM) tryConfirmCalib();
+    if(calibrated) break;
+    await wait(150);
+  }
+}
+function tryConfirmCalib(){
+  if(calibrated) return;
+  if(live.faceM){
+    calibrated=true;
+    hideCue(); camHint.textContent="";
+    neutral={...live.faceM};
+    setResult("正面をセット✅","win");
+    aiSay("覚えたよ！",true);
+    if(!busy) playRound();
+  } else {
+    setResult("顔が見えないよ。明るい所で正面を向いて、もう一度「オッケー」と言ってね","lose");
+  }
+}
+resetBtn.addEventListener("click", ()=>{
+  scoreMe=0;scoreAi=0;scoreMeEl.textContent=0;scoreAiEl.textContent=0;
+  setResult("スコアをリセットしました",""); setPhase("スタート待ち");
+});
+$("settingsBtn").addEventListener("click", ()=>{
+  const p=$("settingsPanel");
+  p.style.display = (p.style.display==="none") ? "flex" : "none";
+});
+$("volDown").addEventListener("click", ()=>{ resumeAudio(); setGameVolume(gameVolume-0.15); });
+$("volUp").addEventListener("click", ()=>{ resumeAudio(); setGameVolume(gameVolume+0.15); });
+setGameVolume(gameVolume);
+</script>
+</body>
+</html>                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
