@@ -721,16 +721,20 @@ function aiPlayVideo(src,{keepLast=false,sound=false,rate=1}={}){
     aiVid.style.opacity="1"; aiImg.style.opacity="0";   // 動画へフェード
     try{ aiVid.currentTime=0; }catch(e){}
     try{ aiVid.playbackRate=rate; }catch(e){}        // 再生速度（0.5でスロー＝再生時間2倍）
-    // iOSはsrc変更やplayで速度がリセットされることがあるため再設定
-    aiVid.onloadedmetadata=()=>{ try{ aiVid.playbackRate=rate; }catch(e){} };
-    let done=false;
-    const fin=()=>{ if(done) return; done=true;
+    let done=false, safetyT=null;
+    const fin=()=>{ if(done) return; done=true; if(safetyT) clearTimeout(safetyT);
       if(!keepLast){ aiVid.style.opacity="0"; aiImg.style.opacity="1"; } res(); };
+    // iOSはsrc変更やplayで速度がリセットされるため再設定＋実尺で安全弁を精密化
+    aiVid.onloadedmetadata=()=>{
+      try{ aiVid.playbackRate=rate; }catch(e){}
+      const d=aiVid.duration;
+      if(isFinite(d)&&d>0){ if(safetyT) clearTimeout(safetyT); safetyT=setTimeout(fin,(d/Math.max(0.1,rate))*1000+1200); }
+    };
     aiVid.onended=fin; aiVid.onerror=fin;
     try{ aiVid.playbackRate=rate; }catch(e){}
     const p=aiVid.play(); if(p&&p.catch) p.catch(()=>{});
     try{ aiVid.playbackRate=rate; }catch(e){}
-    setTimeout(fin, Math.max(9000, 10000/Math.max(0.1,rate)));   // 安全弁（スロー時は延長）
+    safetyT=setTimeout(fin, Math.max(9000, 10000/Math.max(0.1,rate)));   // 初期安全弁（メタデータ取得後に精密化）
   });
 }
 // 既存APIを素材ベースに置き換え
@@ -1216,9 +1220,13 @@ async function playRound(){
     hideCue();
     setPhase("ホイ！");
     await wait(60);                        // ← 「ホイ！」の発話直後に
-    showAiFaceTurn(aiDir);                 //    AIが顔の向きを変える（動画・最後の向きで静止）
+    const faceDone=showAiFaceTurn(aiDir);  //    AIが顔の向きを変える（0.5倍速・最後の向きで静止）
     const myPoint=await sample(()=>live.point,900,"☝️ 指はそのまま！"); if(!alive()) return;
     gamePhase="IDLE";
+    await faceDone;                        // 顔が回りきる（最終の向きで静止）まで待つ
+    if(!alive()) return;
+    await wait(1200);                      // 最終の向きをはっきり見せてから勝敗表示へ（認識できるように）
+    if(!alive()) return;
     if(!myPoint){
       setResult("指の向きが読めませんでした",""); await speak("あれ、指が見えなかったな");
     } else if(myPoint===aiDir){
